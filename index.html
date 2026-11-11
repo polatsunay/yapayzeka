@@ -99,7 +99,12 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .toast p{margin:0;font-size:14px;line-height:1.4}
 
 /* Duraklat ve bitiş */
-#pausel,#over,#exitl{z-index:6;align-items:center;background:rgba(27,18,64,.55)}
+#exitl,#bye{z-index:9;align-items:center;background:rgba(27,18,64,.7)}
+.quit{position:fixed;z-index:8;top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));background:var(--sheet);color:var(--pink);border:2px solid var(--pink);border-radius:12px;font-weight:800;font-size:15px;padding:6px 12px;display:flex;align-items:center;gap:6px}
+.btns.b3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:560px){.hudrow{flex-wrap:wrap;row-gap:4px}.qcount{order:3;margin:0 auto;font-size:14px;padding:1px 10px}.pill.gem{display:none}.right{gap:6px}.pause,.right .mute{width:34px;height:34px}.hearts{font-size:21px}.pill{font-size:15px}#qwrap{padding-top:calc(96px + env(safe-area-inset-top,0px))}}
+@media (max-width:460px){.btns.b3{grid-template-columns:1fr}}
+#pausel,#over{z-index:6;align-items:center;background:rgba(27,18,64,.55)}
 .card{width:100%;max-width:560px;background:var(--sheet);border:2px solid var(--violet);border-radius:24px;padding:20px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow:auto}
 .card h2{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(28px,6vw,38px);line-height:1.05;color:var(--sun);text-wrap:balance}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -231,11 +236,21 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
   </div>
 </div>
 
+<button class="quit" id="quitBtn" aria-label="Oyundan çık"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Çıkış</button>
+
 <div class="layer" id="exitl" hidden>
   <div class="card">
     <h2>Oyundan çıkmak istiyor musun?</h2>
-    <p class="sub">Bu koşudaki puanın ve cevapların kaydedilmez.</p>
-    <div class="btns"><button class="ghost" id="exitNo">Vazgeç</button><button class="go danger" id="exitYes">Çık</button></div>
+    <p class="sub" id="exitSub">Bu koşudaki puanın ve cevapların kaydedilmez.</p>
+    <div class="btns b3"><button class="ghost" id="exitNo">Vazgeç</button><button class="ghost" id="exitMenu">Menüye dön</button><button class="go danger" id="exitYes">Oyundan çık</button></div>
+  </div>
+</div>
+
+<div class="layer" id="bye" hidden>
+  <div class="card">
+    <h2>Görüşmek üzere!</h2>
+    <p class="sub">Oyundan çıktın. Bu sekmeyi kapatabilirsin.</p>
+    <button class="go" id="byeBack">Oyuna geri dön</button>
   </div>
 </div>
 
@@ -779,7 +794,7 @@ function startGame(){
   state='run';hud();
 }
 function toMenu(){
-  clearWorld();state='menu';if(AU.ctx&&AU.ctx.state==='suspended')AU.ctx.resume();musicDuck(false);activeQ=null;shieldMesh.visible=false;
+  clearWorld();state='menu';$('intro').hidden=true;if(AU.ctx&&AU.ctx.state==='suspended')AU.ctx.resume();musicDuck(false);activeQ=null;shieldMesh.visible=false;
   $('hud').hidden=true;$('qwrap').hidden=true;$('toastwrap').hidden=true;$('over').hidden=true;$('pausel').hidden=true;$('menu').hidden=false;
   player.ch.root.position.set(0,0,0);player.ch.root.rotation.set(0,Math.PI*0.85,0);player.ch.body.rotation.set(0,0,0);
   $('best').textContent='En yüksek puan: '+best().toLocaleString('tr-TR');
@@ -877,12 +892,31 @@ $('counts').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b
 $('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
 $('toMenu1').onclick=toMenu;$('toMenu2').onclick=toMenu;
 $('pauseBtn').onclick=()=>pause(true);
-$('exitBtn').onclick=()=>{if(state!=='run')return;setBoost(false);state='paused';if(AU.ctx)AU.ctx.suspend();$('exitl').hidden=false;$('exitNo').focus({preventScroll:true})};
-$('exitNo').onclick=()=>{$('exitl').hidden=true;pause(false)};
-$('exitYes').onclick=()=>{$('exitl').hidden=true;toMenu()};
+let exitFrom=null;
+function openExit(){
+  if(state==='bye'||!$('exitl').hidden)return;
+  exitFrom=state;
+  if(state==='run'){setBoost(false);state='paused';if(AU.ctx)AU.ctx.suspend()}
+  const inGame=exitFrom==='run'||exitFrom==='paused';
+  $('exitSub').hidden=!inGame;
+  $('exitMenu').hidden=!(inGame||exitFrom==='over');
+  $('exitl').hidden=false;$('exitNo').focus({preventScroll:true});
+}
+$('exitBtn').onclick=openExit;$('quitBtn').onclick=openExit;
+$('exitNo').onclick=()=>{$('exitl').hidden=true;if(exitFrom==='run')pause(false)};
+$('exitMenu').onclick=()=>{$('exitl').hidden=true;toMenu()};
+$('exitYes').onclick=()=>{
+  $('exitl').hidden=true;clearWorld();activeQ=null;state='bye';
+  ['hud','qwrap','toastwrap','over','pausel','menu','intro'].forEach(id=>$(id).hidden=true);
+  if(AU.ctx)AU.ctx.suspend();
+  $('bye').hidden=false;
+  try{window.close()}catch(e){}
+  $('byeBack').focus({preventScroll:true});
+};
+$('byeBack').onclick=()=>{$('bye').hidden=true;state='menu';toMenu();$('menu').hidden=true;$('intro').hidden=false;if(AU.ctx)AU.ctx.resume()};
 $('muteBtn').onclick=toggleMute;$('muteBtn2').onclick=toggleMute;renderMute();
-addEventListener('pointerdown',()=>{if(state!=='paused')musicStart()});
-addEventListener('keydown',()=>{if(state!=='paused')musicStart()});
+addEventListener('pointerdown',()=>{if(state!=='paused'&&state!=='bye')musicStart()});
+addEventListener('keydown',()=>{if(state!=='paused'&&state!=='bye')musicStart()});
 document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>play('click')));
 function setBoost(on){const was=boosting;boosting=on&&state==='run';if(boosting&&!was&&!activeQ)play('boost');$('boostBtn').classList.toggle('on',boosting)}
 addEventListener('keyup',e=>{if(e.key==='Shift'||e.key==='b'||e.key==='B')setBoost(false)});
@@ -926,7 +960,8 @@ function animChar(dt){
 function tick(){
   requestAnimationFrame(tick);
   let dt=Math.min(clock.getDelta(),0.05);
-  if(state==='paused'||state==='over'){renderer.render(scene,camera);return}
+  const qh=state==='run'||state==='bye'||!$('hud').hidden||!$('exitl').hidden;if($('quitBtn').hidden!==qh)$('quitBtn').hidden=qh;
+  if(state==='paused'||state==='over'||state==='bye'){renderer.render(scene,camera);return}
   if(state==='run')update(dt);
   animChar(dt);
   shieldMesh.visible=state==='run'&&shield;
