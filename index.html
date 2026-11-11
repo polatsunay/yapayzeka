@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>YZ Kalkanı Koşucu</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,6 +57,9 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .pill.score{background:var(--sun);color:var(--ink)}
 .pill.gem{background:var(--sheet);border:2px solid var(--cyan);color:var(--cyan)}
 .mute{width:38px;height:38px;border-radius:12px;background:var(--sheet);border:2px solid var(--violet);color:var(--paper);display:grid;place-items:center;padding:0}
+.exit{color:var(--pink)}
+.card p.sub{margin:0;color:var(--mist);font-size:15px}
+.go.danger{background:var(--pink);box-shadow:0 5px 0 #B23A70}
 .mute.off{color:var(--pink);border-color:var(--pink)}
 .brand .mute{margin-left:auto;align-self:center}
 .pause{width:38px;height:38px;border-radius:12px;background:var(--sheet);border:2px solid var(--violet);color:var(--paper);font-size:15px;font-weight:800}
@@ -87,7 +89,7 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .toast p{margin:0;font-size:14px;line-height:1.4}
 
 /* Duraklat ve bitiş */
-#pausel,#over{z-index:6;align-items:center;background:rgba(27,18,64,.55)}
+#pausel,#over,#exitl{z-index:6;align-items:center;background:rgba(27,18,64,.55)}
 .card{width:100%;max-width:560px;background:var(--sheet);border:2px solid var(--violet);border-radius:24px;padding:20px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow:auto}
 .card h2{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(28px,6vw,38px);line-height:1.05;color:var(--sun);text-wrap:balance}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
@@ -133,6 +135,7 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
       <span class="pill score" id="score">0</span>
       <button class="mute" id="muteBtn" aria-label="Sesi kapat"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
       <button class="pause" id="pauseBtn" aria-label="Duraklat">II</button>
+      <button class="mute exit" id="exitBtn" aria-label="Oyundan çık"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
     </div>
   </div>
   <button class="boost" id="boostBtn" aria-label="Basılı tutarak hızlan">HIZLAN<small>Shift</small></button>
@@ -212,6 +215,14 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
   <div class="card">
     <h2>Mola verdin</h2>
     <div class="btns"><button class="ghost" id="toMenu1">Menü</button><button class="go" id="resumeBtn">Devam et</button></div>
+  </div>
+</div>
+
+<div class="layer" id="exitl" hidden>
+  <div class="card">
+    <h2>Oyundan çıkmak istiyor musun?</h2>
+    <p class="sub">Bu koşudaki puanın ve cevapların kaydedilmez.</p>
+    <div class="btns"><button class="ghost" id="exitNo">Vazgeç</button><button class="go danger" id="exitYes">Çık</button></div>
   </div>
 </div>
 
@@ -651,7 +662,7 @@ function startGame(){
   speed=12;runTime=0;score=0;gems=0;hearts=3;shield=false;invuln=0;streak=0;
   activeQ=null;answered=0;correct=0;qTimer=12;boosting=false;distSince=0;gap=14;endTimer=-1;qHideTimer=-1;
   player.ch.root.rotation.set(0,0,0);player.ch.root.position.set(0,0,0);
-  $('menu').hidden=true;$('over').hidden=true;$('pausel').hidden=true;$('qwrap').hidden=true;$('toastwrap').hidden=true;$('hud').hidden=false;
+  $('menu').hidden=true;$('over').hidden=true;$('pausel').hidden=true;$('exitl').hidden=true;$('qwrap').hidden=true;$('toastwrap').hidden=true;$('hud').hidden=false;
   state='run';hud();
 }
 function toMenu(){
@@ -664,7 +675,7 @@ function toMenu(){
 function pause(on){
   setBoost(false);
   if(on&&state==='run'){state='paused';if(AU.ctx)AU.ctx.suspend();$('pausel').hidden=false;$('resumeBtn').focus({preventScroll:true})}
-  else if(!on&&state==='paused'){state='run';if(AU.ctx)AU.ctx.resume();$('pausel').hidden=true;clock.getDelta()}
+  else if(!on&&state==='paused'){if(!$('exitl').hidden)return;state='run';if(AU.ctx)AU.ctx.resume();$('pausel').hidden=true;clock.getDelta()}
 }
 function startQuestion(){
   const q=qQueue.shift();
@@ -753,6 +764,9 @@ $('counts').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b
 $('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
 $('toMenu1').onclick=toMenu;$('toMenu2').onclick=toMenu;
 $('pauseBtn').onclick=()=>pause(true);
+$('exitBtn').onclick=()=>{if(state!=='run')return;setBoost(false);state='paused';if(AU.ctx)AU.ctx.suspend();$('exitl').hidden=false;$('exitNo').focus({preventScroll:true})};
+$('exitNo').onclick=()=>{$('exitl').hidden=true;pause(false)};
+$('exitYes').onclick=()=>{$('exitl').hidden=true;toMenu()};
 $('muteBtn').onclick=toggleMute;$('muteBtn2').onclick=toggleMute;renderMute();
 addEventListener('pointerdown',()=>{if(state!=='paused')musicStart()});
 addEventListener('keydown',()=>{if(state!=='paused')musicStart()});
@@ -877,5 +891,3 @@ let started=false;const go=()=>{if(!started){started=true;init()}};
 if(document.fonts&&document.fonts.load){Promise.all([document.fonts.load("800 40px 'Baloo 2'"),document.fonts.load("600 20px 'Baloo 2'")]).then(go,go);setTimeout(go,1800)}else go();
 })();
 </script>
-
-</body></html>
